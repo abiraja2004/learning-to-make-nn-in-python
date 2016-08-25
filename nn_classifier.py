@@ -456,8 +456,8 @@ cn	=											\
 	ClassifierNet								\
 		(										\
 		Bunch(									\
-				sizes_of_hidden	= [32]			\
-			,	act				= ["lrelu"]		\
+				sizes_of_hidden	= [32,32]			\
+			,	act				= ["lrelu","lrelu"]		\
 			,	n_inputs		= 2				\
 			,	n_outputs		= 10			\
 			,	final_act		= 0				\

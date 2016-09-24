@@ -485,7 +485,7 @@ if __name__ == "__main__":
 	print time.clock() - t0, "seconds to backprop"
 
 
-	for	epoch		in	xrange(5):
+	for	superepoch		in	xrange(5):
 		for	i		in	xrange(100):
 			for	p	in	xrange( len(pat) ):
 			# for	p	in	xrange( 1 ):

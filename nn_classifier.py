@@ -266,7 +266,7 @@ class ClassifierNet:
 					)
 
 
-	def backward(self, target, mode="each", learning_rate=0.03):
+	def backward(self, target, mode="each", learning_rate=0.01,	weight_decay=0):
 
 		if target > self.layers.n_outputs	:
 			raise ValueError('BACKWARD method SAYS:	target should be <= # of possible outputs')
@@ -375,8 +375,7 @@ class ClassifierNet:
 		#
 		#	All but the last layer have weights. We want to tweak those.
 		for		i_layer		in	xrange( self.layers.num_of_layers-1 )		:
-
-			self.layers.weights_from_to							[ i_layer	]	+=	\
+			weight_addition	=														\
 					np.array_split													\
 						(															\
 							self.layers.neuron_activations		[ i_layer	]		\
@@ -387,6 +386,14 @@ class ClassifierNet:
 				*	self.layers.error							[ i_layer+1	]		\
 				*	learning_rate
 
+			# weight_decay=0.000001
+			weight_addition		-=														\
+				weight_decay	*	weight_addition * weight_addition * np.sign( weight_addition )
+				# weight_decay	*	weight_addition * weight_addition * weight_addition
+
+			self.layers.weights_from_to							[ i_layer	]	+=	\
+				weight_addition
+
 			self.layers.neuron_biases	[ i_layer+1	]	+=		\
 					self.layers.error	[ i_layer+1	]			\
 				*	learning_rate
@@ -394,7 +401,7 @@ class ClassifierNet:
 			#	We tweak weights by
  			#	learning rate *
 			#	amount of change we want *
-			#	amount of activation we have from neuron from which weights origin
+			#	amount of activation we have from neuron from which weight origins
 
 
 
@@ -435,83 +442,84 @@ class ClassifierNet:
 
 import time
 
+if __name__ == "__main__":
 
-pat = 	[
-			Bunch(	i= [0,0],	o= 1	)
-		,	Bunch(	i= [0,1],	o= 2	)
-		,	Bunch(	i= [1,0],	o= 2	)
-		,	Bunch(	i= [1,1],	o= 1	)
-		,	Bunch(	i= [2,2],	o= 3	)
-		]
+	pat = 	[
+				Bunch(	i= [0,0],	o= 1	)
+			,	Bunch(	i= [0,1],	o= 2	)
+			,	Bunch(	i= [1,0],	o= 2	)
+			,	Bunch(	i= [1,1],	o= 1	)
+			,	Bunch(	i= [2,2],	o= 3	)
+			]
 
-for		samples_per_output	in	xrange(20):
-	for		out				in	xrange(10):
-		pat.append											\
-			(												\
-			Bunch(	i=	np.random.randn(2)	,	o=out+1	)	\
+	for		samples_per_output	in	xrange(10):
+		for		out				in	xrange(20):
+			pat.append											\
+				(												\
+				Bunch(	i=	np.random.randn(2)	,	o=out+1	)	\
+				)
+
+
+	cn	=											\
+		ClassifierNet								\
+			(										\
+			Bunch(									\
+					sizes_of_hidden	= [32,32]			\
+				,	act				= ["lrelu","lrelu"]		\
+				,	n_inputs		= 2				\
+				,	n_outputs		= 20			\
+				,	final_act		= 0				\
+				)									\
 			)
+	# cn.forward(	pat[0].i )
 
-
-cn	=											\
-	ClassifierNet								\
-		(										\
-		Bunch(									\
-				sizes_of_hidden	= [32,32]			\
-			,	act				= ["lrelu","lrelu"]		\
-			,	n_inputs		= 2				\
-			,	n_outputs		= 10			\
-			,	final_act		= 0				\
-			)									\
-		)
-# cn.forward(	pat[0].i )
-
-# cn.tell_result()
-# cn.tell_weights()
-
-t0 = time.clock()
-cn.forward(	pat[0].i )
-print time.clock() - t0, "seconds to forward"
-
-t0 = time.clock()
-cn.backward(	pat[0].o )
-print time.clock() - t0, "seconds to backprop"
-
-
-for	epoch		in	xrange(50):
-	for	i		in	xrange(1000):
-		for	p	in	xrange( len(pat) ):
-		# for	p	in	xrange( 1 ):
-			cn.forward(	pat[p].i )
-			# cn.backward(	pat[p].o ,	mode	=	"max and target")
-			cn.backward(	pat[p].o)
-
-		if	i%250	==	0	:
-			print	i
-
-
-	count	=	0
-	Of		=	0
-	for	p	in	xrange( len(pat) ):
-		count	+=	cn.tell_result(	pat[p] )
-		Of		+=	1
+	# cn.tell_result()
 	# cn.tell_weights()
-	print	"\n"
-	print	"Correct:"
-	print	count
-	print	"of"
-	print	Of
-	print	"\n"
+
+	t0 = time.clock()
+	cn.forward(	pat[0].i )
+	print time.clock() - t0, "seconds to forward"
+
+	t0 = time.clock()
+	cn.backward(	pat[0].o )
+	print time.clock() - t0, "seconds to backprop"
+
+
+	for	epoch		in	xrange(5):
+		for	i		in	xrange(100):
+			for	p	in	xrange( len(pat) ):
+			# for	p	in	xrange( 1 ):
+				cn.forward(	pat[p].i )
+				# cn.backward(	pat[p].o ,	mode	=	"max and target")
+				cn.backward(	pat[p].o,	weight_decay=0.01)
+
+			if	i%250	==	0	:
+				print	i
+
+
+		count	=	0
+		Of		=	0
+		for	p	in	xrange( len(pat) ):
+			count	+=	cn.tell_result(	pat[p] )
+			Of		+=	1
+		# cn.tell_weights()c
+		print	"\n"
+		print	"Correct:"
+		print	count
+		print	"of"
+		print	Of
+		print	"\n"
 
 
 
 
-# cn.forward(	pat[0].i )
-# cn.backward(	pat[0].o ,	mode	=	"max and target")
+	# cn.forward(	pat[0].i )
+	# cn.backward(	pat[0].o ,	mode	=	"max and target")
 
-# cn.tell_result()
+	# cn.tell_result()
 
-# train it with some patterns
-# for i in range(20):
-# 	n.train(pat)
-# 	# test it
-# 	n.test(pat)
+	# train it with some patterns
+	# for i in range(20):
+	# 	n.train(pat)
+	# 	# test it
+	# 	n.test(pat)

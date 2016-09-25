@@ -49,61 +49,72 @@ class activation:
 	@staticmethod
 	def act(read_numpy_array, type="relu"):
 		numpy_array = np.copy(read_numpy_array)
-		for x in np.nditer( numpy_array , op_flags=['readwrite'] ):
-			#	Plain linear
-			if		type=="" or type==0:
-				# x[...]=	x
-				continue
+		if		type=="" or type==0:
+			"do nothing"
+		elif	type=="relu":
+			numpy_array[ numpy_array< 0	]	=	0
+		elif	type=="lrelu":
+			numpy_array[ numpy_array< 0	]	*=	0.1
+		elif	type=="necroRelu":
+			numpy_array[ numpy_array< 0	]	*=	0.1
+		elif	type=="abs":
+			numpy_array[ numpy_array< 0	]	*=	-1
 
-			#	Hyperbolic tangent
-			elif	type=="tanh":
-				x[...]=	math.tanh(x)
-
-			elif	type=="relu":
-				if x>0:
-					# x[...]=	x
-					continue
-				else:
-					x[...]=	0
-
-			elif	type=="lrelu":
-				if x>0:
-					# x[...]=	x
-					continue
-				else:
-					x[...]=	x*0.1
-
-			elif	type=="necroRelu":
-				if x>0:
-					# x[...]=	x
-					continue
-				else:
-					x[...]=	0
-
-			elif	type=="abs":
-				if x>0:
-					# x[...]=	x
-					continue
-				else:
-					x[...]=	-x
-
-			# no luck with this one
-			elif	type=="wierdAbs":
-				if		x> 1:
-					# x[...]=	x
-					continue
-				elif	x>-1:
-					x[...]=	0
-				else:
-					x[...]=	-x
-
-			# no luck with this one
-			elif	type=="sin":
-				x[...]=	math.sin(x)
-
-			# no luck with this one
-			elif	type=="custom1":
-				x[...]=	1 / ( x*x + 2 )
+		# for x in np.nditer( numpy_array , op_flags=['readwrite'] ):
+		# 	#	Plain linear
+		# 	if		type=="" or type==0:
+		# 		# x[...]=	x
+		# 		continue
+		#
+		# 	#	Hyperbolic tangent
+		# 	elif	type=="tanh":
+		# 		x[...]=	math.tanh(x)
+		#
+		# 	elif	type=="relu":
+		# 		if x>0:
+		# 			# x[...]=	x
+		# 			continue
+		# 		else:
+		# 			x[...]=	0
+		#
+		# 	elif	type=="lrelu":
+		# 		if x>0:
+		# 			# x[...]=	x
+		# 			continue
+		# 		else:
+		# 			x[...]=	x*0.1
+		#
+		# 	elif	type=="necroRelu":
+		# 		if x>0:
+		# 			# x[...]=	x
+		# 			continue
+		# 		else:
+		# 			x[...]=	0
+		#
+		# 	elif	type=="abs":
+		# 		if x>0:
+		# 			# x[...]=	x
+		# 			continue
+		# 		else:
+		# 			x[...]=	-x
+		#
+		# 	# no luck with this one
+		# 	elif	type=="wierdAbs":
+		# 		if		x> 1:
+		# 			# x[...]=	x
+		# 			continue
+		# 		elif	x>-1:
+		# 			x[...]=	0
+		# 		else:
+		# 			x[...]=	-x
+		#
+		# 	# no luck with this one
+		# 	elif	type=="sin":
+		# 		x[...]=	math.sin(x)
+		#
+		# 	# no luck with this one
+		# 	elif	type=="custom1":
+		# 		x[...]=	1 / ( x*x + 2 )
 
 		return numpy_array
 
@@ -112,54 +123,69 @@ class activation:
 	def error_activation(read_numpy_array, type="relu"):
 		#	"Derivatives" don't actually have to be mathematically correct derivatives
 		numpy_array = np.copy(read_numpy_array)
-		for x in np.nditer( numpy_array , op_flags=['readwrite'] ):
-			#	Plain linear
-			if	type=="" or type==0:
-				x[...]=	1
+		if		type=="" or type==0:
+			numpy_array.fill( 1 )
+		elif	type=="relu":
+			numpy_array[ numpy_array>=0	]	=	1
+			numpy_array[ numpy_array< 0	]	=	0
+		elif	type=="lrelu":
+			numpy_array[ numpy_array>=0	]	=	1
+			numpy_array[ numpy_array< 0	]	=	0.1
+		elif	type=="necroRelu":
+			numpy_array[ numpy_array>=0	]	=	1
+			numpy_array[ numpy_array< 0	]	=	0.1
+		elif	type=="abs":
+			numpy_array[ numpy_array>=0	]	=	1
+			numpy_array[ numpy_array< 0	]	=	-1
 
-			elif	type=="tanh":
-				x[...]=	1 - math.tanh(x)**2
-				#	also works, but isn't a correct derivative:
-				# return	1 - x**2
-				#	fact that such things work is an interesting topic
-
-			elif	type=="relu":
-				if x>0:
-					x[...]=	1
-				else:
-					x[...]=	0
-
-			elif	type=="lrelu":
-				if x>0:
-					x[...]=	1
-				else:
-					x[...]=	0.1
-
-			elif	type=="necroRelu":
-				if x>0:
-					x[...]=	1
-				else:
-					x[...]=	0.1
-
-			elif	type=="abs":
-				if x>0:
-					x[...]=	1
-				else:
-					x[...]=	-1
-
-			elif	type=="wierdAbs":
-				if		x> 1:
-					x[...]=	1
-				elif	x>-1:
-					x[...]=	0
-				else:
-					x[...]=	-1
-
-			elif	type=="sin":
-				x[...]=	math.cos(x)
-
-			elif	type=="custom1":
-				x[...]=	-2*x / ( ( x*x+2 )**2 )
+		# for x in np.nditer( numpy_array , op_flags=['readwrite'] ):
+		# 	#	Plain linear
+		# 	if	type=="" or type==0:
+		# 		x[...]=	1
+		#
+		# 	elif	type=="tanh":
+		# 		x[...]=	1 - math.tanh(x)**2
+		# 		#	also works, but isn't a correct derivative:
+		# 		# return	1 - x**2
+		# 		#	fact that such things work is an interesting topic
+		#
+		# 	elif	type=="relu":
+		# 		if x>0:
+		# 			x[...]=	1
+		# 		else:
+		# 			x[...]=	0
+		#
+		# 	elif	type=="lrelu":
+		# 		if x>0:
+		# 			x[...]=	1
+		# 		else:
+		# 			x[...]=	0.1
+		#
+		# 	elif	type=="necroRelu":
+		# 		if x>0:
+		# 			x[...]=	1
+		# 		else:
+		# 			x[...]=	0.1
+		#
+		# 	elif	type=="abs":
+		# 		if x>0:
+		# 			x[...]=	1
+		# 		else:
+		# 			x[...]=	-1
+		#
+		# 	elif	type=="wierdAbs":
+		# 		if		x> 1:
+		# 			x[...]=	1
+		# 		elif	x>-1:
+		# 			x[...]=	0
+		# 		else:
+		# 			x[...]=	-1
+		#
+		# 	elif	type=="sin":
+		# 		x[...]=	math.cos(x)
+		#
+		# 	elif	type=="custom1":
+		# 		x[...]=	-2*x / ( ( x*x+2 )**2 )
 
 		return numpy_array
 
@@ -543,8 +569,8 @@ if __name__ == "__main__":
 							)
 				# cn.backward(	pat[p].o ,	mode	=	"max and target")
 				cn.backward	(	pat[p].o
-							,	weight_decay=0.005
-							,	bias_decay	=0.05
+							# ,	weight_decay=0.005
+							# ,	bias_decay	=0.05
 							)
 
 			# if	ep%250	==	0	:

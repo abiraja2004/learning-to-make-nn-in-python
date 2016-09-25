@@ -9,6 +9,9 @@ import random
 import string
 import numpy as np
 np.set_printoptions(precision=5,	suppress=True)
+f32 = np.float32
+# f32 = np.float64
+
 #from pylab import *
 #	<-- for orthonormal init
 
@@ -26,7 +29,7 @@ def svd_orthonormal(shape):
 	a = np.random.standard_normal(flat_shape)
 	u, _, v = np.linalg.svd(a, full_matrices = False)
 	q = u if u.shape == flat_shape else v
-	q = q.reshape(shape)
+	q = q.reshape(shape).astype(f32)
 	return q
 
 
@@ -164,7 +167,6 @@ class activation:
 # activation	=	activation()
 
 
-
 class ClassifierNet:
 
 	def __init__(self, layers):
@@ -205,12 +207,12 @@ class ClassifierNet:
 			# print	"current_layer_size:", current_layer_size
 
 			self.layers.neuron_activations	[ current_layer ]	=	\
-				np.zeros(		current_layer_size )
+				np.zeros(		current_layer_size	,	dtype=f32 )
 
 			if	current_layer	>	0	:
 				#	Biases are only for non-input layers
 				self.layers.neuron_biases	[ current_layer ]	=	\
-					np.zeros(	current_layer_size )
+					np.zeros(	current_layer_size	,	dtype=f32 )
 
 
 			if	current_layer	!=	len( self.layers.sizes ) -1	:
@@ -223,6 +225,7 @@ class ClassifierNet:
 				#	"weights_from_to", because weights_from_to[layer][from_neuron][to_neuron]
 				self.layers.weights_from_to[ current_layer ]	=	\
 					svd_orthonormal( ( current_layer_size, next_layer_size ) )
+				# print svd_orthonormal( ( current_layer_size, next_layer_size ) ).dtype
 
 				# print	"weights_from_to shape:"
 				# print							self.layers.weights_from_to[ current_layer ].shape
@@ -266,7 +269,12 @@ class ClassifierNet:
 					)
 
 
-	def backward(self, target, mode="each", learning_rate=0.01,	weight_decay=0):
+	def backward(self
+		,	target
+		,	mode			="each"
+		,	learning_rate	=0.01
+		,	weight_decay	=0
+		,	bias_decay		=0):
 
 		if target > self.layers.n_outputs	:
 			raise ValueError('BACKWARD method SAYS:	target should be <= # of possible outputs')
@@ -283,7 +291,7 @@ class ClassifierNet:
 
 		if		mode	==	"each"	:
 			#	Calculate resulting activity error for each output neuron
-			self.layers.targets[ -1 ]			=	np.zeros( self.layers.n_outputs )
+			self.layers.targets[ -1 ]			=	np.zeros( self.layers.n_outputs ).astype(f32)
 			self.layers.targets[ -1 ][ target ]	=	1.
 			#	In Python
 			#	[-1]	selects the  last element of an array
@@ -387,16 +395,28 @@ class ClassifierNet:
 				*	learning_rate
 
 			# weight_decay=0.000001
-			weight_addition		-=														\
-				weight_decay	*	weight_addition * weight_addition * np.sign( weight_addition )
+			if	weight_decay	!=	0:
+				weight_addition		-=														\
+					weight_decay	*	weight_addition * weight_addition * np.sign( weight_addition )
 				# weight_decay	*	weight_addition * weight_addition * weight_addition
 
 			self.layers.weights_from_to							[ i_layer	]	+=	\
 				weight_addition
 
-			self.layers.neuron_biases	[ i_layer+1	]	+=		\
+			# self.layers.neuron_biases	[ i_layer+1	]	+=		\
+			# 		self.layers.error	[ i_layer+1	]			\
+			# 	*	learning_rate
+
+			bias_addition	=									\
 					self.layers.error	[ i_layer+1	]			\
 				*	learning_rate
+
+			if	bias_decay	!=	0:
+				bias_addition	-=									\
+					bias_decay	*	bias_addition	*	bias_addition	*	np.sign( bias_addition )
+
+			self.layers.neuron_biases	[ i_layer+1	]	+=		\
+				bias_addition
 
 			#	We tweak weights by
  			#	learning rate *
@@ -405,7 +425,7 @@ class ClassifierNet:
 
 
 
-	def tell_result(self, pattern):
+	def is_correct(self, pattern):
 
 		self.forward( pattern.i )
 
@@ -444,36 +464,63 @@ import time
 
 if __name__ == "__main__":
 
-	pat = 	[
-				Bunch(	i= [0,0],	o= 1	)
-			,	Bunch(	i= [0,1],	o= 2	)
-			,	Bunch(	i= [1,0],	o= 2	)
-			,	Bunch(	i= [1,1],	o= 1	)
-			,	Bunch(	i= [2,2],	o= 3	)
-			]
+	# pat = 	[
+	# 			Bunch(	i= [0,0],	o= 1	)
+	# 		,	Bunch(	i= [0,1],	o= 2	)
+	# 		,	Bunch(	i= [1,0],	o= 2	)
+	# 		,	Bunch(	i= [1,1],	o= 1	)
+	# 		,	Bunch(	i= [2,2],	o= 3	)
+	# 		]
+	#
+	# for		samples_per_output	in	xrange(10):
+	# 	for		out				in	xrange(20):
+	# 		pat.append											\
+	# 			(												\
+	# 			Bunch(	i=	np.random.randn(2).astype(f32)	,	o=out+1	)	\
+	# 			)
 
-	for		samples_per_output	in	xrange(10):
-		for		out				in	xrange(20):
-			pat.append											\
-				(												\
-				Bunch(	i=	np.random.randn(2)	,	o=out+1	)	\
-				)
+	path		=	'./mnist/'
+
+	testing		=	np.load	(	path+ 'mnist.testing.npy'
+							).astype(f32)
+	trainin		=	np.load	(	path+ 'mnist.trainin.npy'
+							).astype(f32)
+
+	lab_testing	=	np.load	(	path+ 'mnist.lab_testing.npy'
+							)
+	lab_trainin	=	np.load	(	path+ 'mnist.lab_trainin.npy'
+							)
+
+	pat = 	[]
+	for	key	in	xrange( trainin.shape[0] ):
+		val	=	trainin[ key ]
+		pat.append	(
+					Bunch(	i= val	,	o= lab_trainin[key]	)
+					)
+
+
+	test = 	[]
+	for	key	in	xrange( testing.shape[0] ):
+		val	=	testing[ key ]
+		test.append	(
+					Bunch(	i= val	,	o= lab_testing[key]	)
+					)
 
 
 	cn	=											\
 		ClassifierNet								\
 			(										\
 			Bunch(									\
-					sizes_of_hidden	= [32,32]			\
+					sizes_of_hidden	= [20,100]				\
 				,	act				= ["lrelu","lrelu"]		\
-				,	n_inputs		= 2				\
-				,	n_outputs		= 20			\
+				,	n_inputs		= pat[0].i.shape[0]		\
+				,	n_outputs		= 10			\
 				,	final_act		= 0				\
 				)									\
 			)
 	# cn.forward(	pat[0].i )
 
-	# cn.tell_result()
+	# cn.is_correct()
 	# cn.tell_weights()
 
 	t0 = time.clock()
@@ -484,30 +531,34 @@ if __name__ == "__main__":
 	cn.backward(	pat[0].o )
 	print time.clock() - t0, "seconds to backprop"
 
+	print cn.layers.weights_from_to[0].dtype
 
-	for	superepoch		in	xrange(5):
-		for	i		in	xrange(100):
+	t0 = time.clock()
+
+	for	x			in	xrange(5):
+		for	ep		in	xrange(1):
 			for	p	in	xrange( len(pat) ):
 			# for	p	in	xrange( 1 ):
-				cn.forward(	pat[p].i )
+				cn.forward	(	pat[p].i
+							)
 				# cn.backward(	pat[p].o ,	mode	=	"max and target")
-				cn.backward(	pat[p].o,	weight_decay=0.01)
+				cn.backward	(	pat[p].o
+							,	weight_decay=0.005
+							,	bias_decay	=0.05
+							)
 
-			if	i%250	==	0	:
-				print	i
-
+			# if	ep%250	==	0	:
+			# 	print	ep
 
 		count	=	0
 		Of		=	0
-		for	p	in	xrange( len(pat) ):
-			count	+=	cn.tell_result(	pat[p] )
+		for	p	in	xrange( len(test) ):
+			count	+=	cn.is_correct(	test[p] )
 			Of		+=	1
 		# cn.tell_weights()c
+		print time.clock() - t0, "seconds so far"
 		print	"\n"
-		print	"Correct:"
-		print	count
-		print	"of"
-		print	Of
+		print	"Epoch"	,	x+1	,	"	Correct:"	,	count	,	"	of"	,	Of
 		print	"\n"
 
 
@@ -516,7 +567,7 @@ if __name__ == "__main__":
 	# cn.forward(	pat[0].i )
 	# cn.backward(	pat[0].o ,	mode	=	"max and target")
 
-	# cn.tell_result()
+	# cn.is_correct()
 
 	# train it with some patterns
 	# for i in range(20):
